@@ -1,0 +1,29 @@
+# ---- STM32CubeIDE / Eclipse build output ----
+Debug/
+Release/
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+*.su
+.metadata/
+
+# Keep the .ioc (CubeMX config), source, and project files tracked.
+# Do NOT ignore: *.ioc, .project, .cproject, Core/, Drivers/
+
+# ---- Python (control/) ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+*.egg-info/
+
+# ---- OS / editor junk ----
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/

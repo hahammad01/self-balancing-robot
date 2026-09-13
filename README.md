@@ -14,8 +14,8 @@ and disturbance-rejection plots.
 
 | Phase | Goal | State |
 |-------|------|-------|
-| 1 | Toolchain + blink (prove the flash/debug path) | ⏳ in progress |
-| 2 | Read the IMU (I2C → MPU6050, raw data over UART) | ⬜ not started |
+| 1 | Toolchain + blink (prove the flash/debug path) | ✅ done |
+| 2 | Read the IMU (I2C → MPU6050, raw data over UART) | ✅ done |
 | 3 | Tilt estimation (complementary filter → Kalman), logged + plotted | ⬜ not started |
 | 4 | Drive motors (PWM + TB6612, read encoders), open-loop verify | ⬜ not started |
 | 5 | Close the loop: PID on a fixed-rate timer ISR; first balance | ⬜ not started |

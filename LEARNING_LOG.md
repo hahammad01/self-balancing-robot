@@ -9,11 +9,11 @@ Template for each entry:
 
 ```
 ## YYYY-MM-DD — Phase N: <title>
-\\\*\\\*Did:\\\*\\\* 
-\\\*\\\*Learned (the why):\\\*\\\* 
-\\\*\\\*Broke / debugged:\\\*\\\* 
-\\\*\\\*Open questions:\\\*\\\* 
-\\\*\\\*Commit:\\\*\\\* <short hash / message>
+\\\\\\\*\\\\\\\*Did:\\\\\\\*\\\\\\\* 
+\\\\\\\*\\\\\\\*Learned (the why):\\\\\\\*\\\\\\\* 
+\\\\\\\*\\\\\\\*Broke / debugged:\\\\\\\*\\\\\\\* 
+\\\\\\\*\\\\\\\*Open questions:\\\\\\\*\\\\\\\* 
+\\\\\\\*\\\\\\\*Commit:\\\\\\\*\\\\\\\* <short hash / message>
 ```
 
 \---
@@ -64,7 +64,7 @@ Template for each entry:
 
 
 
-**## 2026-09-13 — Phase 2: IMU over I2C → UART (complete)**
+### **## 2026-09-13 — Phase 2: IMU over I2C → UART (complete)**
 
 **\*\*Did:\*\* Wired an MPU6050 module to the STM32 over I2C (SCL=PB8, SDA=PB7, AD0→GND for**
 
@@ -135,6 +135,88 @@ Template for each entry:
 **\*\*Open questions:\*\* \[what you're still unsure about — e.g. exactly what the WHO\_AM\_I register**
 
 **is for, or how the I2C repeated-START in HAL\_I2C\_Mem\_Read works]**
+
+
+
+**\*\*Commit:\*\* \[paste short hash from `git log --oneline -1`]**
+
+
+
+
+
+### **## 2026-09-15 — Phase 3: Tilt estimation (complete)**
+
+**\*\*Did:\*\* Fused the MPU6500 accel + gyro into one clean roll angle. Built a complementary**
+
+**filter, then added a 2-state Kalman filter (angle + gyro bias). Logged accel / gyro-only /**
+
+**complementary / Kalman over UART with a millisecond timestamp, and plotted all four in Python.**
+
+**Verified with ±60° tilt sweeps and a tuning sweep on R\_measure.**
+
+
+
+**\*\*Learned (the why):\*\***
+
+**- Accel = absolute angle (atan2 of gravity) but noisy and fooled by motion; gyro = smooth**
+
+&#x20; **rate that must be integrated, so it drifts. Fusion combines their strengths.**
+
+**- Complementary filter: angle = alpha\*(angle + gyroRate\*dt) + (1-alpha)\*accelAngle — a**
+
+&#x20; **high-pass on the gyro + low-pass on the accel, one fixed weight (alpha=0.98).**
+
+**- Kalman filter: predict with the gyro (uncertainty grows), correct with the accel**
+
+&#x20; **(uncertainty shrinks); the Kalman gain K is computed each step from the ratio of**
+
+&#x20; **prediction vs measurement uncertainty. It also tracks the gyro bias as a live 2nd state.**
+
+**- R\_measure = how much you trust the accel: low R -> chases accel spikes; high R -> rejects**
+
+&#x20; **them and leans on the gyro. Raising R from 0.03 to 0.1 made the Kalman ignore a violent**
+
+&#x20; **shake (accel spiked to 170-200 deg from linear acceleration, not real tilt).**
+
+**- atan2 cancels the sensor scale factor; dt comes from HAL\_GetTick(); gyro bias is**
+
+&#x20; **calibrated by averaging \~2000 still samples at startup.**
+
+
+
+**\*\*Broke / debugged:\*\***
+
+**1. Variable scope — declared loop variables inside the if(who==...) block, so the while loop**
+
+&#x20;  **couldn't see them ("undeclared"). Fix: declare persistent vars at the top of BEGIN 2,**
+
+&#x20;  **before the if.**
+
+**2. Plot showed only \~4s for a 25s run — the script assumed 100 Hz. Fix: log a real millis**
+
+&#x20;  **timestamp (HAL\_GetTick) as CSV column 0 and use it for the time axis. (Real loop \~20-60 Hz;**
+
+&#x20;  **the blocking UART print slows it.)**
+
+**3. Gyro sign inverted — the fused angle overshot at every transition and the gyro-only line**
+
+&#x20;  **mirror-imaged the accel. Fix: negate gyroRate. After that, all lines move together, no**
+
+&#x20;  **overshoot.**
+
+
+
+**\*\*Open questions:\*\* \[what you're still unsure about — e.g. the derivation of the Kalman**
+
+**covariance (P) update equations, or how to choose Q\_angle/Q\_bias systematically]**
+
+
+
+**\*\*Result:\*\* clean ±60° tracking with no overshoot; gyro-only visibly drifts while fused stays**
+
+**true; Kalman ≈ complementary under normal motion, and the R\_measure sweep showed the**
+
+**spike-rejection trade-off. Two portfolio figures produced.**
 
 
 

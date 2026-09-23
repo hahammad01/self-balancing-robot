@@ -9,11 +9,11 @@ Template for each entry:
 
 ```
 ## YYYY-MM-DD — Phase N: <title>
-\\\\\\\*\\\\\\\*Did:\\\\\\\*\\\\\\\* 
-\\\\\\\*\\\\\\\*Learned (the why):\\\\\\\*\\\\\\\* 
-\\\\\\\*\\\\\\\*Broke / debugged:\\\\\\\*\\\\\\\* 
-\\\\\\\*\\\\\\\*Open questions:\\\\\\\*\\\\\\\* 
-\\\\\\\*\\\\\\\*Commit:\\\\\\\*\\\\\\\* <short hash / message>
+\\\\\\\\\\\\\\\*\\\\\\\\\\\\\\\*Did:\\\\\\\\\\\\\\\*\\\\\\\\\\\\\\\* 
+\\\\\\\\\\\\\\\*\\\\\\\\\\\\\\\*Learned (the why):\\\\\\\\\\\\\\\*\\\\\\\\\\\\\\\* 
+\\\\\\\\\\\\\\\*\\\\\\\\\\\\\\\*Broke / debugged:\\\\\\\\\\\\\\\*\\\\\\\\\\\\\\\* 
+\\\\\\\\\\\\\\\*\\\\\\\\\\\\\\\*Open questions:\\\\\\\\\\\\\\\*\\\\\\\\\\\\\\\* 
+\\\\\\\\\\\\\\\*\\\\\\\\\\\\\\\*Commit:\\\\\\\\\\\\\\\*\\\\\\\\\\\\\\\* <short hash / message>
 ```
 
 \---
@@ -221,4 +221,102 @@ Template for each entry:
 
 
 **\*\*Commit:\*\* \[paste short hash from `git log --oneline -1`]**
+
+
+
+## **## 2026-09-23 — Phase 4: Open-loop motor drive + encoder feedback**
+
+**\*\*Did:\*\* Configured TIM1\_CH1 as 25 kHz PWM (PSC=0, ARR=999) and PE7/PE8/PE15 as direction+standby**
+
+**GPIO, wired a JGA25-370 through a TB6612FNG on a barrel-jack battery pack, and set TIM3 to**
+
+**quadrature encoder mode (TI12, PB4/PB5) to read wheel motion. Wrote a motorA(int) helper mapping**
+
+**a signed command to direction pins + duty, and a labelled FWD/REV test that samples the encoder**
+
+**every 200 ms \*during\* motion and prints over USART2/FTDI at 115200.**
+
+**\*\*Result:\*\* +245 counts/200 ms forward, -244 reverse, steady across 10 samples and symmetric both**
+
+**ways (\~1225 counts/s at 30 % duty). Commanded direction matches measured direction.**
+
+
+
+**\*\*Learned (the why):\*\***
+
+**- An MCU pin sources \~20 mA; a motor draws hundreds. The H-bridge is the power stage — the MCU only**
+
+&#x20; **supplies \*intent\* (direction bits + a duty cycle), never current.**
+
+**- PWM sets speed because the motor's inductance and rotor inertia average the fast on/off waveform**
+
+&#x20; **into a mean voltage. duty = CCR/(ARR+1); 25 kHz is above audible so the motor doesn't whine.**
+
+**- TB6612 truth table: IN1/IN2 = 10 forward, 01 reverse, 00 coast, 11 brake; STBY low disables**
+
+&#x20; **everything regardless of the inputs. STBY not being pulled high is the classic "nothing happens".**
+
+**- Quadrature: two Hall channels 90° out of phase. Position is the edge count; \*direction\* is which**
+
+&#x20; **channel leads. In timer encoder mode the hardware counts every edge with zero CPU cost — the loop**
+
+&#x20; **just reads a register.**
+
+**- Reading a 16-bit counter as int16\_t gives signed rollover for free: 65535 reads as -1, so**
+
+&#x20; **backwards motion is negative without any wraparound logic.**
+
+**- Two mirrored motors need the sign fixed in \*software\*, not by swapping wires, so the whole codebase**
+
+&#x20; **can rely on one "positive = robot moves forward" convention.**
+
+
+
+**\*\*Broke / debugged:\*\***
+
+**- Missing <stdio.h>/<string.h> → implicit declaration of sprintf/strlen.**
+
+**- Pasted loop code into the unprotected gap between USER CODE END WHILE and USER CODE BEGIN 3. It**
+
+&#x20; **compiled, but CubeMX regeneration would silently delete it. All hand-written code lives between**
+
+&#x20; **BEGIN/END markers — no exceptions.**
+
+**- Deleted main()'s closing brace while pasting → "invalid storage class for function MX\_TIM1\_Init"**
+
+&#x20; **and "expected declaration at end of input". A cascade of nonsense errors starting at a function**
+
+&#x20; **\*after\* your edit usually means an unbalanced brace, not a problem in that function.**
+
+**- Motor spun for a split second then stopped: inrush current tripping the supply. Isolated it by**
+
+&#x20; **checking whether UART was still printing — it was, so the MCU hadn't browned out; the power path**
+
+&#x20; **had cut out.**
+
+**- Encoder appeared to creep by only +3..+6: blocking HAL\_Delay made the loop print once per \~6.2 s,**
+
+&#x20; **and forward and reverse cancelled almost exactly between prints. Fixed by sampling inside a**
+
+&#x20; **for-loop during each motion phase. Lesson: if you only sample at the end of a motion, you measure**
+
+&#x20; **the net result, not the motion.**
+
+
+
+**\*\*Open questions:\*\* battery current rating; whether the bulk capacitor across VM/GND is fitted and**
+
+**what exactly resolved the power dropout; counts per wheel revolution (to measure).**
+
+
+
+**\*\*Deferred to Phase 5 (by design):\*\* TIM2 encoder mode (ARR must be 65535 — TIM2 is 32-bit on the**
+
+**F407, unlike TIM3), motor B wiring, and the A/B sign convention. Adding a second motor and closing**
+
+**a control loop in the same step means two failure sources at once.**
+
+
+
+**\*\*Commit:\*\* phase4: open-loop motor drive + encoder feedback (motor A verified)**
 

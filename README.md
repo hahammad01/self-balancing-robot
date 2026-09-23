@@ -16,9 +16,9 @@ and disturbance-rejection plots.
 |-------|------|-------|
 | 1 | Toolchain + blink (prove the flash/debug path) | ✅ done |
 | 2 | Read the IMU (I2C → MPU6050, raw data over UART) | ✅ done |
-| 3 | Tilt estimation (complementary filter → Kalman), logged + plotted | ⬜ not started |
-| 4 | Drive motors (PWM + TB6612, read encoders), open-loop verify | ⬜ not started |
-| 5 | Close the loop: PID on a fixed-rate timer ISR; first balance | ⬜ not started |
+| 3 | Tilt estimation (complementary filter → Kalman), logged + plotted | ✅ done |
+| 4 | Drive motors (PWM + TB6612, read encoders), open-loop verify | ✅ done |
+| 5 | Second motor + close the loop: PID on a fixed-rate timer ISR; first balance | ⬜ not started |
 | 6 | Add outer velocity loop + LQR; **PID vs LQR comparison** | ⬜ not started |
 | 7 | Document: report, plots, wiring diagram, demo GIF | ⬜ not started |
 
@@ -48,4 +48,14 @@ LEARNING_LOG.md   dated log of what was learned and why
 
 ## Results
 
-_(Plots, numbers — settling time, overshoot, loop rate — and the demo GIF land here as phases complete.)_
+**Phase 3 — tilt estimation.** Complementary filter and a 2-state Kalman filter (angle + gyro bias)
+run against the same logged IMU data. Gyro-only integration visibly drifts; accel-only is noisy but
+unbiased; both fused estimates track ±60° steps cleanly with no overshoot. An `R_measure` sweep shows
+the Kalman filter trading accelerometer-spike rejection against response lag.
+
+**Phase 4 — open-loop drive.** Motor A under PWM + TB6612 with TIM3 hardware encoder feedback:
+**+245 counts / 200 ms forward, −244 counts / 200 ms reverse** (≈1225 counts/s at 30 % duty), steady
+across samples and symmetric in both directions, with measured direction matching the commanded one.
+
+_(Step-response and disturbance-rejection plots, settling time, overshoot, loop rate, and the demo GIF
+land here as Phases 5–7 complete.)_

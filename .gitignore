@@ -27,3 +27,8 @@ env/
 Thumbs.db
 *.swp
 .vscode/
+# Video — too large for GitHub; link externally instead
+*.MOV
+*.mov
+*.mp4
+*.avi

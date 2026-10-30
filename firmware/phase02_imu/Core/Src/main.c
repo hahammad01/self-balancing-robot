@@ -144,7 +144,8 @@ int main(void)
   float gyroAngle = 0.0f;   // gyro-only angle (deg) — comparison line
   float gxBias = 0.0f;      // gyro-X resting bias (raw counts)
   uint32_t lastTick = 0;
-  kalAngle = roll;   // seed the Kalman angle with the startup accel angle
+  kalAngle = roll;   // NOTE: roll is still 0 here (it is seeded from the accel further down),
+                     // so the Kalman angle starts at 0 deg and converges from the accelerometer.
 
   // Ask the sensor "who are you?" — 0x68 = MPU6050, 0x70 = MPU6500
   HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, REG_WHO_AM_I, I2C_MEMADD_SIZE_8BIT, &who, 1, 100);
@@ -209,15 +210,14 @@ int main(void)
     roll = alpha * (roll + gyroRate * dt) + (1.0f - alpha) * rollAcc;
     // Kalman fused angle — uses the SAME bias-corrected gyroRate you fixed
     float rollKalman = kalman(rollAcc, gyroRate, dt);
-    // 7) CSV out: accel, gyro-only, fused
-    // 7) CSV: time_ms, accel, gyro-only, fused
-    // CSV: time, accel, gyro-only, complementary, kalman  (bump the buffer to [80])
+    // 7) CSV: time_ms, accel, gyro-only, complementary, kalman
     char line[80];
     sprintf(line, "%lu,%.2f,%.2f,%.2f,%.2f\r\n",
             (unsigned long)now, rollAcc, gyroAngle, roll, rollKalman);
     HAL_UART_Transmit(&huart2, (uint8_t*)line, strlen(line), 100);
 
-    HAL_Delay(10);   // ~100 Hz
+    HAL_Delay(10);   // 10 ms pause; with the blocking I2C reads and UART print, the logged
+                     // runs show a 15-16 ms loop period (~62-67 Hz), not 100 Hz.
   }
   /* USER CODE END 3 */
 

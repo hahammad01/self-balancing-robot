@@ -8,7 +8,7 @@
 | Secondary MCU | ESP32 | Parked for later (Wi-Fi/BLE telemetry). **Not used in the balancer.** |
 | Motors | Geared DC motors **with quadrature encoders** | Drive wheels. Encoders are required for the outer velocity/position loop (Phase 6). |
 | Motor driver | TB6612FNG | H-bridge, drives both motors from PWM + direction pins. |
-| IMU | MPU6050 | 3-axis accel + 3-axis gyro over I2C. Source of the tilt angle. |
+| IMU | Module sold as MPU6050; chip reports `WHO_AM_I = 0x70` (MPU6500) | 3-axis accel + 3-axis gyro over I2C. Source of the tilt angle. The registers used here are compatible with both parts. |
 | Battery | 3S Li-ion (~11.1 V nominal) | Main power. ⚠️ see open items. |
 | Regulator | Buck converter | Steps battery down to logic voltage (feeds 5V/3.3V rails). |
 | UART | FTDI USB-UART adapter | Spare serial console. **Not needed to program** (DISC1 has ST-Link). |
@@ -30,7 +30,7 @@
 > Pin assignments per ST's board user manual **UM1472** ("Discovery kit with STM32F407VG MCU").
 > Confirm against your board revision before wiring anything in Phase 2.
 
-## ⚠️ OPEN ITEMS — resolve before Phase 4 (motor power)
+## ⚠️ OPEN ITEMS — resolve before untethered battery operation (Phase 5)
 
 1. **Battery protection + charging (SAFETY-CRITICAL).** Confirm whether the 3S pack has a
    BMS/protection board, and how it will be charged (a balance charger such as an iMAX B6-type

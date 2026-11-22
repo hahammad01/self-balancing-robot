@@ -18,7 +18,7 @@ plant, with measured step-response and disturbance-rejection plots.
 | 2 | Read the IMU (I2C → MPU6500, raw data over UART) | ✅ done |
 | 3 | Tilt estimation (complementary filter → Kalman), logged + plotted | ✅ done |
 | 4 | Drive motors (PWM + TB6612, read encoders), open-loop verify | ✅ done |
-| 5 | Second motor + close the loop: PID on a fixed-rate timer ISR; first balance | 🟡 in progress — peripherals configured, both motors and encoders running with a verified sign convention; IMU, tilt and PID modules not yet written |
+| 5 | Second motor + close the loop: PID on a fixed-rate timer ISR; first balance | 🟡 in progress — peripherals configured, both motors and encoders running (drive and encoder signs not yet verified on the chassis); IMU, tilt and PID modules not yet written |
 | 6 | Add outer velocity loop + LQR; **PID vs LQR comparison** | ⬜ not started |
 | 7 | Document: report, plots, wiring diagram, demo GIF | ⬜ not started |
 
@@ -75,7 +75,10 @@ the commanded one.
 
 **Phase 5 — in progress.** Both motors driven through one helper with a software sign
 convention (`MOTOR_A_SIGN = +1`, `MOTOR_B_SIGN = −1`); with that convention both encoders count
-positive when the robot is commanded forward.
+positive when the robot is commanded forward. That does not yet verify the signs: each motor has a
+drive polarity and an encoder polarity, and a count shows only their product, so two wrong signs read
+the same as two right ones. The drive signs will be set by watching the wheels on the assembled
+chassis, and the encoder signs after that.
 
 _(Step-response and disturbance-rejection plots, settling time, overshoot, control-loop rate and
 the demo GIF land here as Phases 5–7 complete.)_

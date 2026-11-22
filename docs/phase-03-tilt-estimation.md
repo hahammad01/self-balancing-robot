@@ -87,6 +87,11 @@ both sensors.
 **What `alpha` controls:** higher alpha → smoother but slower to correct drift (trusts gyro more);
 lower alpha → snappier correction but more accel noise gets through. 0.98 is a good start.
 
+> **Note (22 Nov 2026):** `alpha` only means something together with the loop period `dt`. The
+> filter's time constant is `tau = -dt / ln(alpha)`: at this phase's ~15 ms loop, `alpha = 0.98`
+> gives `tau ≈ 0.74 s`; the same 0.98 at Phase 5's 5 ms tick gives `tau ≈ 0.25 s`. When the loop
+> rate changes, choose `tau` first and compute `alpha = exp(-dt / tau)`.
+
 ### 0.5 `dt` — why consistent timing matters, and how we get it
 
 Integration (`rate * dt`) is only correct if `dt` is the *actual* elapsed time. We measure it with
@@ -325,6 +330,11 @@ comparison** is itself a strong portfolio point.
 your accel-angle's sign, so the two fight each other. **Fix:** negate the rate — use
 `gyroRate = -(gx - gxBias) / 131.0f;`. (Verify by tilting slowly: the fused angle should move the same
 direction as the accel angle, not opposite.)
+
+> **Note (22 Nov 2026):** for this build the committed, un-negated sign is the correct one; see the
+> Phase 3 entry in the learning log (item 3) for the logged evidence. Do not negate it. Also, a wrong
+> gyro sign does not make the angle run away: the accel term still pulls the fused angle back, so
+> the symptom is a wrong-way kick at the start of each tilt that then settles, not a runaway.
 
 **Angle jumps by ~360° or flips sign near vertical** → that's `atan2` wrapping at ±180°, which is
 normal and harmless for a robot that stays near upright. Don't "fix" it.

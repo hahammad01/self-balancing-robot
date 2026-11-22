@@ -244,6 +244,10 @@ Nothing below is reconstructed from memory except where marked.*
   for both wheels.
 - Ran the test: with `MOTOR_B_SIGN = −1`, both encoders read positive when the motors are
   commanded forward. *(Result as I observed it on 2026-09-28; no readings from this test are saved in the repo.)*
+  > **Correction (22 Nov 2026):** this test does not settle the signs. Each motor has a drive
+  > polarity and an encoder polarity, and an encoder count shows only their product, so two
+  > wrong signs read exactly like two right ones. The drive signs have to be set by watching
+  > each wheel on the assembled chassis, and `ENC_A_SIGN` / `ENC_B_SIGN` after that.
   Photo of the two-motor bench wiring:
   [`media/phase05-two-motor-bench-wiring.jpg`](media/phase05-two-motor-bench-wiring.jpg).
 - Created `mpu6500`, `tilt` and `pid` modules as empty stubs.

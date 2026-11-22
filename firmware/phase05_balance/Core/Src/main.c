@@ -28,6 +28,9 @@
 #include "motors.h"
 #include <stdio.h>
 #include <string.h>
+#include "mpu6500.h"
+#include "tilt.h"
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,7 +51,11 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-char g_msg[96];
+volatile uint8_t g_tick = 0;     /* set by the TIM6 ISR at exactly 200 Hz */
+Tilt     g_tilt;
+float    g_angle = 0.0f;
+char     g_msg[96];
+uint32_t g_tick_count = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,7 +66,12 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM6) {
+        g_tick = 1;          /* heartbeat only — real work happens in main() */
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -98,9 +110,25 @@ int main(void)
   MX_TIM6_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);   /* encoder A */
-  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);   /* encoder B */
+  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
+  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
   Motors_Init();
+  Motors_Stop();
+
+  /* IMU bring-up */
+  HAL_GPIO_WritePin(LED_CAL_GPIO_Port, LED_CAL_Pin, GPIO_PIN_SET);   /* orange on */
+  if (MPU_Init(&hi2c1) != HAL_OK) {
+      /* fatal: sit here blinking red so the failure is unmistakable */
+      while (1) {
+          HAL_GPIO_TogglePin(LED_FALL_GPIO_Port, LED_FALL_Pin);
+          HAL_Delay(100);
+      }
+  }
+  Tilt_Calibrate(&g_tilt, &hi2c1);        /* ~2 s — HOLD THE ROBOT STILL */
+  HAL_GPIO_WritePin(LED_CAL_GPIO_Port, LED_CAL_Pin, GPIO_PIN_RESET);  /* orange off */
+
+  /* Start the control clock LAST, once everything is ready */
+  HAL_TIM_Base_Start_IT(&htim6);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,27 +138,29 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  int16_t prevA, nowA, deltaA;
-	  int16_t prevB, nowB, deltaB;
+	  if (g_tick) {
+	      g_tick = 0;
+	      /* --- §3.4 rate check (temporary) --- */
+	      static uint32_t rate_ticks = 0, rate_t0 = 0;
+	      if (rate_t0 == 0) rate_t0 = HAL_GetTick();     /* start window on the first tick */
+	      rate_ticks++;
+	      if (HAL_GetTick() - rate_t0 >= 1000) {
+	          sprintf(g_msg, "ticks/s=%lu\r\n", rate_ticks);
+	          HAL_UART_Transmit(&huart2, (uint8_t *)g_msg, strlen(g_msg), 10);
+	          rate_ticks = 0;
+	          rate_t0 += 1000;                           /* fixed 1 s windows, no drift */
+	      }
+	      const float dt = 0.005f;          /* fixed 5 ms, guaranteed by TIM6 */
 
-	  Motor_A_Set(300);
-	  Motor_B_Set(300);
-	  prevA = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
-	  prevB = (int16_t)__HAL_TIM_GET_COUNTER(&htim2);
-	  for (int i = 0; i < 10; i++) {
-	      HAL_Delay(200);
-	      nowA   = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
-	      nowB   = (int16_t)__HAL_TIM_GET_COUNTER(&htim2);
-	      deltaA = (int16_t)(nowA - prevA);
-	      deltaB = (int16_t)(nowB - prevB);
-	      prevA  = nowA;
-	      prevB  = nowB;
-	      sprintf(g_msg, "A=%d  B=%d\r\n", deltaA, deltaB);
-	      HAL_UART_Transmit(&huart2, (uint8_t *)g_msg, strlen(g_msg), 100);
+	      g_angle = Tilt_Update(&g_tilt, &hi2c1, dt);
+
+	      /* Telemetry at ~10 Hz, NOT every tick */
+	      if (++g_tick_count >= 20) {
+	          g_tick_count = 0;
+	          sprintf(g_msg, "%lu,%.2f\r\n", HAL_GetTick(), g_angle);
+	          HAL_UART_Transmit(&huart2, (uint8_t *)g_msg, strlen(g_msg), 10);
+	      }
 	  }
-
-	  Motors_Stop();
-	  HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }

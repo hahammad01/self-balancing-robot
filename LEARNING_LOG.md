@@ -258,6 +258,35 @@ started; no closed loop; no balance.
 **Commit:** this entry and the `firmware/phase05_balance` project are committed together on
 2026-10-30.
 
+---
+
+## 2026-11-22 — Phase 5: IMU driver, tilt filter and the 200 Hz tick (in progress)
+
+*Entry written on 22 Nov 2026 from the code. Bench readings from this code are not saved in the
+repo yet.*
+
+**Did:**
+- `mpu6500.c`: reads `WHO_AM_I` and accepts 0x68 (MPU6050) or 0x70 (MPU6500), clears the sleep
+  bit, and reads accel, temperature and gyro in one 14-byte burst from 0x3B.
+- `tilt.c`: averages 2000 gyro samples at rest for the bias, seeds the angle from
+  `atan2(ay, az)`, then runs the complementary filter with the gyro sign as committed (not negated).
+- `main.c`: motors stopped at start; IMU bring-up with the orange LED on during calibration and a
+  fast red blink if the IMU does not answer; TIM6 started last. The TIM6 callback only sets
+  `g_tick`; the main loop does the I2C read and the filter at a fixed `dt = 0.005 s` and prints
+  `time, angle` every 20th tick (about 10 Hz). A temporary ticks-per-second print checks the rate.
+- Ticked *Use float with printf from newlib-nano* in the project settings so `%f` prints.
+- Moved the work into the repo's `firmware/phase05_balance`; the project had been built from a
+  copy outside the repo.
+
+**Open:**
+- `alpha = 0.98` was carried over from Phase 3. At the 5 ms tick that is a time constant of about
+  0.25 s, not the 0.74 s it was at Phase 3's 15 ms loop.
+- The sensor's internal low-pass filters (registers 0x1A and 0x1D) are not configured yet.
+- The ticks-per-second check counts TIM6 ticks against `HAL_GetTick()`, which comes from the same
+  clock, so it cannot detect a wrong clock. The rate has to be checked against the PC.
+
+**Commit:** the firmware commit before this entry.
+
 <!--
 Template for each entry:
 

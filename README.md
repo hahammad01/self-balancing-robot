@@ -18,7 +18,7 @@ plant, with measured step-response and disturbance-rejection plots.
 | 2 | Read the IMU (I2C → MPU6500, raw data over UART) | ✅ done |
 | 3 | Tilt estimation (complementary filter → Kalman), logged + plotted | ✅ done |
 | 4 | Drive motors (PWM + TB6612, read encoders), open-loop verify | ✅ done |
-| 5 | Second motor + close the loop: PID on a fixed-rate timer ISR; first balance | 🟡 in progress — peripherals configured, both motors and encoders running (drive and encoder signs not yet verified on the chassis); IMU, tilt and PID modules not yet written |
+| 5 | Second motor + close the loop: PID on a fixed-rate timer ISR; first balance | 🟡 in progress — peripherals configured, both motors and encoders running (drive and encoder signs not yet verified on the chassis); IMU driver and tilt filter written and called from the 200 Hz TIM6 tick; PID not yet written; robot not yet assembled |
 | 6 | Add outer velocity loop + LQR; **PID vs LQR comparison** | ⬜ not started |
 | 7 | Document: report, plots, wiring diagram, demo GIF | ⬜ not started |
 
@@ -33,7 +33,7 @@ Each folder is a complete STM32CubeIDE project (STM32CubeMX 6.18.1, STM32Cube FW
 | [`firmware/phase01_blink`](firmware/phase01_blink) | 1 | Holding the user button (PA0) lights the on-board LEDs. The first step of this phase, a 1 Hz blink, was replaced by this code. |
 | [`firmware/phase02_imu`](firmware/phase02_imu) | 2 + 3 | Reads the IMU over I2C, runs a complementary filter and a 2-state Kalman filter, and streams `time, accel, gyro-only, complementary, kalman` as CSV over UART. Phase 3 was built inside the Phase 2 project. |
 | [`firmware/phase04_motors`](firmware/phase04_motors) | 4 | 25 kHz PWM into a TB6612FNG, TIM3 hardware quadrature decoding, forward/reverse test printing the encoder count every 200 ms. |
-| [`firmware/phase05_balance`](firmware/phase05_balance) | 5 (in progress) | 168 MHz clock, 21 kHz PWM on both motors, TIM2/TIM3 encoders, TIM6 configured for a 200 Hz control tick (not yet started). `motors.c` holds the single motor-drive helper and the mirror sign convention. `main.c` is currently a two-motor encoder test. |
+| [`firmware/phase05_balance`](firmware/phase05_balance) | 5 (in progress) | 168 MHz clock, 21 kHz PWM on both motors, TIM2/TIM3 encoders, TIM6 200 Hz control tick. `motors.c` holds the single motor-drive helper and the mirror sign convention. `mpu6500.c` checks `WHO_AM_I`, wakes the sensor and reads all six axes in one 14-byte burst; `tilt.c` calibrates the gyro bias, seeds the angle from the accelerometer and runs a complementary filter. `main.c` starts TIM6 last, updates the angle on every tick (the ISR only sets a flag), streams `time, angle` at about 10 Hz and prints a temporary ticks-per-second check. Motors stay stopped. |
 
 ## Hardware
 

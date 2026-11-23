@@ -15,6 +15,12 @@ File names are as saved on the day and are kept unchanged.
 `kalman-replay-*.png`: both R values run offline on the same input; see `kalman_replay.py` and
 [`docs/phase-03-record.md`](../docs/phase-03-record.md).
 
+## Logged runs (Phase 5, firmware `firmware/phase05_balance`)
+
+| File | Content |
+|------|---------|
+| `phase05-loop-rate.csv` | 23 Nov 2026, USB power, IMU + FTDI, no motors. `pc_time_s` then the board line: `time_ms,angle_deg,rate_dps` about every 100 ms, `#S` statistics once per second. First 4.8 s are from the previous boot. Result: 199.89 Hz, 0 missed ticks (`loop_rate_check.py`). |
+
 ## Scripts
 
 | Script | Use |

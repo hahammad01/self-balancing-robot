@@ -20,7 +20,7 @@ compared with cascade PID under one written test protocol.
 | 2 | Read the IMU (I2C → MPU6500, raw data over UART) | ✅ done |
 | 3 | Tilt estimation (complementary filter → Kalman), logged + plotted | ✅ done |
 | 4 | Drive a motor (PWM + TB6612, read its encoder), open-loop verify; motor A only | ✅ done; interval-logged re-run pending |
-| 5 | Second motor + close the loop: PID on a fixed-rate timer tick; first balance | 🟡 in progress: both motors and encoders wired (signs not yet verified); IMU driver and tilt filter on the 200 Hz tick, with missed-tick and timing counters (rate not yet measured); PID not written; robot not assembled |
+| 5 | Second motor + close the loop: PID on a fixed-rate timer tick; first balance | 🟡 in progress: both motors and encoders wired (signs not yet verified); IMU driver and tilt filter on the 200 Hz tick, measured at 199.89 Hz against the PC clock with 0 missed ticks; PID not written; robot not assembled |
 | 6 | Add outer velocity loop + LQR; **PID vs LQR comparison** | ⬜ not started |
 | 7 | Document: report, plots, wiring diagram, demo GIF | ⬜ not started |
 
@@ -76,8 +76,8 @@ the encoder count changed by about +245 per 200 ms forward and about -244 in rev
 counts/s), with the direction of the count matching the command. These figures were read off the
 terminal; the raw output was not saved. A re-run with per-interval logging is pending.
 
-**Phase 5: in progress** ([record](docs/phase-05-record.md)). The 200 Hz tick, the tilt filter and
-the timing counters are in the firmware; the tick rate is to be measured against the PC clock. The
+**Phase 5: in progress** ([record](docs/phase-05-record.md)). The 200 Hz loop measured against the PC clock over 64 s:
+199.89 Hz, 0 missed ticks, longest pass 2.4 ms of the 5 ms tick with telemetry on. The
 motor sign convention (`MOTOR_A_SIGN = +1`, `MOTOR_B_SIGN = -1`) is not yet verified: an encoder
 count shows the product of a motor's drive and encoder polarities, so the drive signs will be set by
 watching the wheels on the assembled chassis.

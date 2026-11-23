@@ -43,10 +43,30 @@ base for the balance controller.
 ## Verification
 | Check | Method | Status |
 |-------|--------|--------|
-| Firmware builds | CubeIDE from the repo path | to be confirmed on the PC |
-| Tick rate | `#S` tick totals against the PC clock over 60 s: [`control/log_serial.py`](../control/log_serial.py) then [`control/loop_rate_check.py`](../control/loop_rate_check.py). The board's own `HAL_GetTick()` cannot be used: it runs from the same clock. | pending |
-| Missed deadlines, execution time | `ticks_missed`, `work_max_us`, `loop_max_us` from the same log, with and without telemetry | pending |
+| Firmware builds | CubeIDE from the repo path | built and flashed 23 Nov 2026 |
+| Tick rate | `#S` tick totals against the PC clock: [`control/log_serial.py`](../control/log_serial.py) then [`control/loop_rate_check.py`](../control/loop_rate_check.py). The board's own `HAL_GetTick()` cannot be used: it runs from the same clock. | **199.89 Hz** over 64 s (-0.056 %), 23 Nov 2026 |
+| Missed deadlines, execution time | `ticks_missed`, `work_max_us`, `loop_max_us` from the same log, telemetry on | **0 missed**; IMU read + filter max **400 us**; whole pass incl. UART max **2432 us** of the 5000 us tick; 0 IMU read errors |
 | Motor and encoder signs | Wheels off the ground: command a small positive value on each motor and watch the wheel; then set the encoder signs. An encoder count alone cannot verify a sign, because it shows the product of the drive and encoder polarities. | pending |
+
+## Result: loop timing (23 Nov 2026)
+Log: [`control/phase05-loop-rate.csv`](../control/phase05-loop-rate.csv) (USB power, IMU and FTDI connected,
+no motors). The first 4.8 s of the file are from the previous boot; the board was reset at
+4.85 s (PC time), and the line `# WHO_AM_I=0x70 gyro_bias=-324.8 LSB (2000 valid) tau=0.75 s`
+follows.
+
+| Quantity | Value |
+|----------|-------|
+| Tick rate against the PC clock | 199.89 Hz over 64 s (65 statistics lines): -0.056 % |
+| Missed ticks | 0 |
+| Longest IMU read + filter step | 400 us |
+| Longest pass including UART output | 2432 us (budget 5000 us) |
+| IMU read errors | 0 |
+| Gyro X bias at rest | -324.8 LSB = -2.48 deg/s |
+| Angle at rest, 28 s after calibration | mean 0.12 deg, SD 0.02 deg |
+| Angle range during the hand tilts | -31.9 to +67.6 deg |
+
+The -0.056 % rate error is the internal RC oscillator (HSI), which the board runs on; ST specifies
+it to +/-1 % at 25 deg C. The loop uses less than half of each tick with telemetry on.
 
 ## Earlier result (September)
 With `MOTOR_B_SIGN = -1`, both encoders counted up when both motors were commanded forward. For the

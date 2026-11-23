@@ -330,10 +330,14 @@ raised was confirmed and is fixed or marked here.
 - `control/plot_tilt.py` takes the log file as an argument; it no longer defaults to a file that
   does not exist.
 
+**Result, Phase 5 loop timing** (`control/phase05-loop-rate.csv`): 199.89 Hz against the PC clock
+over 64 s, 0 missed ticks, IMU read + filter 400 µs, longest pass with UART 2432 µs of 5000 µs,
+0 IMU read errors. The first attempt logged the old firmware: the new build had been compiled but
+not flashed. Check the boot line (`# WHO_AM_I=…`) before trusting a log.
+
 **Open:**
 - Phase 4 re-run with logged intervals.
-- Phase 5: tick rate against the PC clock, missed ticks and execution time, with and without
-  telemetry; motor and encoder signs on the chassis.
+- Phase 5: motor and encoder signs on the chassis.
 
 <!--
 Template for each entry:

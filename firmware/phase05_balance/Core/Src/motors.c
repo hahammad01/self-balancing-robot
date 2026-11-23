@@ -2,13 +2,15 @@
 #include "main.h"     /* pin macros: AIN1_Pin, AIN1_GPIO_Port, STBY_Pin, ... */
 #include "tim.h"      /* declares htim1 */
 
-/* ---- Mirror sign convention ----------------------------------------------
- * The two motors are mounted facing opposite directions, so identical
- * electrical commands drive the robot opposite ways. Exactly ONE motor gets
- * negated, so the rest of the firmware deals in one clean convention:
- * positive = robot moves forward.
+/* ---- Sign convention -----------------------------------------------------
+ * The two motors are mounted mirrored, so the same electrical command turns the
+ * wheels in opposite directions relative to the robot. One motor is negated so
+ * that a positive command means "robot forward" for both.
  *
- * Part 2.3 tells you which motor. Set these to +1 / -1 accordingly.
+ * NOT YET VERIFIED on the chassis. Set each sign by commanding a small positive
+ * value with the wheels off the ground and watching which way that wheel turns;
+ * only then set the encoder signs. An encoder count alone cannot verify these,
+ * because it shows the product of the drive and encoder polarities.
  * -------------------------------------------------------------------------*/
 #define MOTOR_A_SIGN  (+1)
 #define MOTOR_B_SIGN  (-1)

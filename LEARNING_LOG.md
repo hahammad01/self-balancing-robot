@@ -34,8 +34,12 @@ settings, not code.
 
 **Commit:** No commit at the time. The project was first committed in `e86aef6` (2026-09-23),
 together with the Phase 2 and Phase 4 firmware. The committed `main.c` is the final state of
-this session: holding B1 (PA0) lights the green, orange and blue LEDs (PD12, PD13, PD15). The
-1 Hz toggle loop was replaced by that button code and is not in the repo.
+this session. The 1 Hz toggle loop was replaced by button code and is not in the repo.
+> **Correction (23 Nov 2026):** this entry used to say that holding B1 lights the green, orange
+> and blue LEDs. That was read from the code, not tested. The committed project never configured
+> PA0 (GPIOA clock off) or PD13. Flashed unchanged on 23 Nov, it lit **no LED** with B1 pressed or
+> released. Fixed the same day: PA0 and PD13 added in CubeMX, code regenerated: green, orange and
+> blue now on while B1 is held and off on release. See `docs/phase-01-record.md`.
 
 ---
 
@@ -340,6 +344,11 @@ not flashed. Check the boot line (`# WHO_AM_I=…`) before trusting a log.
 in reverse (SD 0.5, 63 intervals). The interval is about 203 ms, so the rate is 1200 and 1191
 counts/s; the old 1225 counts/s assumed exactly 200 ms. The first summary merged two lines from
 before the reset into the first run; `encoder_summary.py` now starts a new run at a reset.
+
+**Result, Phase 1 button** (bare board, USB only): the committed September project, flashed
+unchanged, lit no LED with B1 pressed or released, because PA0 and PD13 were never configured.
+After adding them in CubeMX and regenerating, green, orange and blue light while B1 is held and
+go off on release; red stays off.
 
 **Open:**
 - Phase 5: motor and encoder signs on the chassis.

@@ -102,8 +102,8 @@ the Phase 2 project, not in a separate one.
 - Kalman filter: predict with the gyro (uncertainty grows), correct with the accel
   (uncertainty shrinks); the Kalman gain K is computed each step from the ratio of
   prediction vs measurement uncertainty. It also tracks the gyro bias as a live 2nd state.
-- `R_measure` = how much you trust the accel: low R → follows the accel more closely,
-  spikes included; high R → leans on the gyro and smooths the accel out.
+- `R_measure` = how noisy the filter assumes the accel is: low R → follows the accel more
+  closely, spikes included; high R → leans on the gyro and smooths the accel out.
 - `atan2` cancels the sensor scale factor; `dt` comes from `HAL_GetTick()`; gyro bias is
   calibrated by averaging 2000 still samples at startup.
 
@@ -121,6 +121,17 @@ the Phase 2 project, not in a separate one.
 > 198.5°. Whether R = 0.1 would have rejected **that same** spike is not yet tested. A fair
 > test replays one logged run through both R values offline. The accel angle and the
 > gyro rate can both be recovered from the CSV columns.
+>
+> **Correction (23 Nov 2026) — the replay.** Done with `control/kalman_replay.py`:
+> - Both runs were recorded with **R = 0.03**. Replaying each log with R = 0.03 reproduces its
+>   logged Kalman column within 0.011°; with R = 0.1 the replay differs by 12° (the file named
+>   "R = 0.1") and 32° (the R = 0.03 file). Most likely `R_measure` was edited but the board was
+>   not re-flashed before the second run. So there never was an R = 0.1 run.
+> - Run on the same input, R = 0.03 and R = 0.1 differ by a median of 0.2–0.3°. R = 0.1 is
+>   slightly smoother and lags more. Neither rejects the 198.5° excursion: both follow it
+>   (R = 0.1 peaks at 201°). Wrapping the innovation to ±180° does not remove it either,
+>   because the accel angle is itself invalid there (sensor tipped past 90° about its other axis).
+> - Details: `docs/phase-03-record.md`.
 
 **Broke / debugged:**
 1. Variable scope — declared loop variables inside the `if (who == ...)` block, so the while
@@ -175,6 +186,11 @@ PWM frequency check (verified 30 Oct 2026 from `phase04_motors.ioc`): HSI 16 MHz
 
 **Result:** +245 counts / 200 ms forward, −244 reverse, steady across 10 samples and symmetric
 both ways (~1225 counts/s at 30 % duty). Commanded direction matches measured direction.
+> **Correction (23 Nov 2026):** the firmware printed the running TIM3 count, not the change per
+> 200 ms, so these figures were differences read off the terminal. The terminal output was not
+> saved, so "steady" cannot be checked: the per-interval values and their spread are not
+> available. Treat ±245 / 200 ms as approximate. The firmware now prints the per-interval change;
+> a logged re-run is pending (`docs/phase-04-record.md`).
 
 **Learned (the why):**
 - An MCU pin sources ~20 mA; a motor draws hundreds. The H-bridge is the power stage — the MCU
@@ -224,8 +240,8 @@ firmware) and `dc26258` (README).
 
 ## 2026-09-26 → 2026-09-28 — Phase 5: Second motor + loop skeleton (in progress)
 
-*Entry written on 30 Oct 2026 from the project files, their timestamps and the bench photo.
-Nothing below is reconstructed from memory except where marked.*
+*Written up on 30 Oct 2026 from the project files, their timestamps and the bench photo; readings
+that were not saved at the time are marked.*
 
 **Did:**
 - Created `phase05_balance` as a fresh CubeMX project (MCU selector, STM32Cube FW_F4 V1.28.3)
@@ -262,8 +278,7 @@ started; no closed loop; no balance.
 
 ## 2026-11-22 — Phase 5: IMU driver, tilt filter and the 200 Hz tick (in progress)
 
-*Entry written on 22 Nov 2026 from the code. Bench readings from this code are not saved in the
-repo yet.*
+*Bench readings from this code are not saved in the repo yet.*
 
 **Did:**
 - `mpu6500.c`: reads `WHO_AM_I` and accepts 0x68 (MPU6050) or 0x70 (MPU6500), clears the sleep
@@ -285,7 +300,40 @@ repo yet.*
 - The ticks-per-second check counts TIM6 ticks against `HAL_GetTick()`, which comes from the same
   clock, so it cannot detect a wrong clock. The rate has to be checked against the PC.
 
-**Commit:** the firmware commit before this entry.
+**Commit:** `ec2fe5a`.
+
+---
+
+## 2026-11-23 — Review of the repo against its code and data
+
+An outside review checked the documentation against the committed code and logs. Everything it
+raised was confirmed and is fixed or marked here.
+
+**Changed:**
+- Phase 3: the "R = 0.1" log was recorded with R = 0.03 (see the Phase 3 correction above). Added
+  `control/kalman_replay.py` and a data index, `control/README.md`.
+- Phase 4: the test now prints `time_ms,dir,cmd,count,delta`, with the delta computed on the board.
+  Added `control/encoder_summary.py`.
+- Phase 5 firmware:
+  - The TIM6 interrupt now counts ticks instead of setting a flag, so a tick that arrives while the
+    loop is busy is counted as missed, not lost. The filter integrates over the elapsed ticks.
+  - The complementary filter uses a time constant (`tau = 0.75 s`, as in Phase 3) and computes
+    `alpha = exp(-dt / tau)`, instead of carrying `alpha = 0.98` over from a 15 ms loop.
+  - The IMU's full-scale ranges and low-pass filters (0x1A, 0x1D) are written and read back.
+  - Gyro calibration averages only the valid reads and fails below 1900 of 2000.
+  - IMU failure, `Error_Handler` and `HardFault_Handler` put the motor driver in standby first.
+  - Once per second the firmware prints total ticks, missed ticks and the longest execution time
+    (DWT cycle counter). `control/log_serial.py` and `control/loop_rate_check.py` compare the tick
+    total with the PC clock.
+- Docs: one record per phase in `docs/` (configuration, results, problems, limitations); the
+  step-by-step guides moved to `docs/guides/`. Code comments rewritten as plain technical notes.
+- `control/plot_tilt.py` takes the log file as an argument; it no longer defaults to a file that
+  does not exist.
+
+**Open:**
+- Phase 4 re-run with logged intervals.
+- Phase 5: tick rate against the PC clock, missed ticks and execution time, with and without
+  telemetry; motor and encoder signs on the chassis.
 
 <!--
 Template for each entry:

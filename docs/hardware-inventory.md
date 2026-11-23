@@ -8,8 +8,8 @@
 | Secondary MCU | ESP32 | Parked for later (Wi-Fi/BLE telemetry). **Not used in the balancer.** |
 | Motors | Geared DC motors **with quadrature encoders** | Drive wheels. Encoders are required for the outer velocity/position loop (Phase 6). |
 | Motor driver | TB6612FNG | H-bridge, drives both motors from PWM + direction pins. |
-| IMU | Module sold as MPU6050; chip reports `WHO_AM_I = 0x70` (MPU6500) | 3-axis accel + 3-axis gyro over I2C. Source of the tilt angle. The registers used here are compatible with both parts. |
-| Battery | 3S Li-ion (~11.1 V nominal) | Main power. ⚠️ see open items. |
+| IMU | Module sold as MPU6050; chip reports `WHO_AM_I = 0x70` (MPU6500) | 3-axis accel + 3-axis gyro over I2C. Source of the tilt angle. The data and power registers are the same on both parts; the accelerometer low-pass filter is a separate register (0x1D) on the MPU6500. |
+| Battery | 3S Li-ion (~11.1 V nominal) with protection board; matching charger | Main power. |
 | Regulator | Buck converter | Steps battery down to logic voltage (feeds 5V/3.3V rails). |
 | UART | FTDI USB-UART adapter | Spare serial console. **Not needed to program** (DISC1 has ST-Link). |
 | Misc | Wheels, chassis, breadboards, jumper wires, soldering iron, DMM, potentiometer, tactile button | Build + bring-up + live PID tuning (pot) + reset/mode (button). |
@@ -24,21 +24,18 @@
 | Blue LED (LD6) | PD15 | User LED |
 | User button (B1) | PA0 | **Active HIGH** — pressing drives the pin to 3.3V (it's the WKUP pin). |
 | On-board ST-Link | USB "ST-LINK" port (mini/micro-USB) | Flash + debug. |
-| Audio DAC (CS43L22) | I2C1 = **PB6 (SCL) / PB9 (SDA)** | ⚠️ Avoid putting the MPU6050 on these default pins — bus collision. Use a different I2C mapping. |
+| Audio DAC (CS43L22) | I2C1 = **PB6 (SCL) / PB9 (SDA)** | Not used for the IMU: the IMU is on PB8 (SCL) / PB7 (SDA). |
 | MEMS sensor | SPI | On-board, leave unconfigured. |
 
 > Pin assignments per ST's board user manual **UM1472** ("Discovery kit with STM32F407VG MCU").
-> Confirm against your board revision before wiring anything in Phase 2.
 
-## ⚠️ OPEN ITEMS — resolve before untethered battery operation (Phase 5)
+## Open items: resolve before untethered battery operation (Phase 5)
 
-1. **Battery protection + charging (SAFETY-CRITICAL).** Confirm whether the 3S pack has a
-   BMS/protection board, and how it will be charged (a balance charger such as an iMAX B6-type
-   is required for a bare 3S pack). A bare, unprotected 3S Li-ion pack is a fire / over-discharge
-   hazard. **Not a blocker for Phases 1–3 (all USB-powered).**
+1. **Battery protection and charging.** Resolved 21 Nov 2026: the pack has a protection board and
+   is charged with a matching charger. Label and board photos to be added.
 2. **Power switch.** A physical slide/rocker switch to cut battery power (separate from the tactile button).
 3. **Bulk capacitor.** ~470–1000 µF electrolytic across the TB6612 motor supply rail (VM) to absorb
    current spikes during the frequent direction reversals a balancer makes (prevents brownout resets).
-4. **Motor current check.** Confirm motor stall current vs TB6612FNG limits (~1.2 A continuous /
-   ~3.2 A peak per channel). If stall exceeds the peak, the driver is undersized.
+4. **Motor current check.** Confirm motor stall current vs TB6612FNG limits (1.2 A average /
+   3.2 A peak per channel, TB6612FNG datasheet). If stall exceeds the peak, the driver is undersized.
 5. Optional: inline fuse / XT60 connector on the battery.

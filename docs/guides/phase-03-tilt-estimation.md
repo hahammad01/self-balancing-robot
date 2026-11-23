@@ -9,8 +9,7 @@ results chart.
 noise and the motors jitter; feed it a drifting angle and it slowly falls over. Everything in Phases
 5–6 assumes you can hand the controller a trustworthy angle. This phase builds that.
 
-**Format:** every step is **Do / Why / Under the hood**. The math is explained from zero — if a line
-isn't clear, that's a bug in the guide, flag it.
+**Format:** every step is **Do / Why / Under the hood**. The math is explained from zero.
 
 ---
 
@@ -80,7 +79,7 @@ with `alpha` close to 1 (typically **0.98**). Read it in two halves:
 
 **Why it's called "complementary":** the two weights sum to 1, and mathematically this is a
 **high-pass filter on the gyro** (keeps fast changes, discards slow drift) plus a **low-pass filter on
-the accel** (keeps the slow true angle, discards fast noise). The two filters are frequency-
+the accel** (keeps the slow, drift-free part of the angle, discards fast noise). The two filters are frequency-
 complementary — each covers the band the other is bad at. One line of code, and you get the best of
 both sensors.
 
@@ -245,36 +244,40 @@ saved. **Do a scripted motion for ~30 s:** hold still, tilt one way ~45°, hold,
 give it a couple of quick shakes, return to flat. Then **File → Log → Close/Stop**.
 
 ### 3b. Plot it in Python
-You'll need Python with numpy + matplotlib (`pip install numpy matplotlib`). Use the `plot_tilt.py`
-script I've given you (in `control/`). Put `tilt_log.csv` next to it and run:
+You'll need Python with numpy + matplotlib (`pip install numpy matplotlib`). Use `control/plot_tilt.py`
+with the log file as its argument:
 ```
-python plot_tilt.py
+python control/plot_tilt.py control/tilt_log.csv
 ```
-It saves `tilt_plot.png` and shows the chart.
+It saves `<log name>_plot.png` next to the log and shows the chart.
 
 **What you should see (and why it's the payoff):**
 - **Accel-only** line: correct on average but **jagged/noisy**.
 - **Gyro-only** line: smooth but **slowly sliding away** from the others — that's the drift, live.
-- **Complementary** line: **smooth AND tracks the true angle** — noise gone, drift gone.
+- **Complementary** line: smooth, without the gyro's drift, and following the accel angle.
 
-That single picture *is* the proof your filter works, and it's exactly the kind of quantitative figure
-that belongs in your portfolio and report.
+All three lines come from the same sensor, so their agreement shows the filter behaves as intended
+(less noise, no drift). It does not show the angle is *accurate*: that needs an independent reference,
+such as a protractor jig or an inclinometer.
 
 ---
 
 # Part 4 — (Upgrade) The Kalman filter
 
-The complementary filter is great and, honestly, is what most balancing robots actually run. The
-**Kalman filter** is the "optimal" version and is what makes this project master's-grade, so it's
-worth adding and understanding — even if the full matrix derivation is a topic for later.
+The complementary filter is what many balancing robots run. The 2-state **Kalman filter** below adds
+an estimate of the gyro bias. It is optimal only under its model assumptions (linear model, Gaussian
+noise with the covariances given by `Q` and `R`); with hand-picked `Q` and `R` it is a well-behaved
+estimator, not an optimal one.
 
 **The intuition (this is what matters):** a Kalman filter keeps not just an angle estimate but a
 measure of *how uncertain* it is. Each loop it does two steps:
 1. **Predict** — advance the angle using the gyro, and *grow* the uncertainty (gyro drifts, so we
    trust it less over time).
 2. **Update** — compare against the accel measurement and correct, by an amount set by the **Kalman
-   gain**, which *optimally* weighs "how noisy is the gyro model" vs "how noisy is the accel." When
-   the accel is trustworthy it corrects more; when it's being shaken it corrects less.
+   gain**, which weighs "how uncertain is the prediction" against "how noisy is the accel" (`R`).
+   With a fixed `R`, the filter does **not** detect shaking: a shake is just a large accel reading,
+   and the filter corrects toward it like any other. Rejecting shakes needs extra logic, for example
+   raising `R` when the measured acceleration magnitude is far from 1 g.
 
 Its key advantage over the complementary filter: it **estimates the gyro bias as a second state and
 tracks it live**, so it adapts as the bias changes with temperature — the complementary filter can't.
@@ -316,9 +319,10 @@ Then in the loop, call it and add a 4th CSV column:
 trust accel less). `Q_angle`/`Q_bias` = how much you let the model drift between corrections (bigger →
 trust the gyro model less). The defaults work well for the MPU6050/6500; nudge them only if needed.
 
-**Re-log and re-plot** (update `plot_tilt.py` to read the 4th column). You'll likely see the Kalman
-and complementary lines nearly overlap — that's expected, and being able to **show and discuss that
-comparison** is itself a strong portfolio point.
+**Re-log and re-plot** (`plot_tilt.py` reads the 4th column). The Kalman and complementary lines
+will likely nearly overlap during normal tilts; differences show up during fast or large motions.
+To compare two settings of `R_measure` fairly, run them on the same recorded input
+(`control/kalman_replay.py`), not on two different hand movements.
 
 ---
 
@@ -398,7 +402,7 @@ this clean angle can finally *command* the wheels and the robot balances.
 - **`atan2(y,x)`** — four-quadrant angle; scale factor cancels, so raw counts are fine.
 - **`dt`** — real loop time in seconds, from `HAL_GetTick()`.
 - **`alpha`** — complementary weight (~0.98); higher = smoother/slower, lower = snappier/noisier.
-- **Kalman filter** — optimal predict/update estimator; also tracks the gyro bias as a state.
+- **Kalman filter** — predict/update estimator (optimal only under its model and noise assumptions); here it also tracks the gyro bias as a state.
 - **Kalman gain** — how much to trust the new measurement vs the prediction each step.
 
 ---
@@ -407,8 +411,8 @@ this clean angle can finally *command* the wheels and the robot balances.
 
 - **Complementary filter** — Pieter-Jan's "Reading a IMU without Kalman: The Complementary Filter"
   (the classic clear explanation of the high-pass/low-pass blend).
-- **Kalman for IMU** — Kristian Lauszus (TKJ Electronics), "A practical approach to Kalman filter for
-  the balancing robot" — the origin of the 2-state implementation above.
+- **Kalman for IMU** — Kristian Lauszus, "A practical approach to Kalman filter and how to implement it",
+  TKJ Electronics blog, 2012 — the origin of the 2-state implementation above.
 - **MPU6050/6500 Register Map** — for `ACCEL_XOUT_H` (0x3B), `GYRO_XOUT_H` (0x43) and scale factors.
 - **STM32 HAL** — `HAL_GetTick()` for millisecond timing (docs in the HAL reference).
 - Optional video: Brian Douglas "Sensor Fusion" and MATLAB Tech Talks on complementary/Kalman filters

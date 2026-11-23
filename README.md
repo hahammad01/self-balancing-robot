@@ -1,12 +1,14 @@
-# Self-Balancing Robot — STM32F407
+# Self-Balancing Robot (STM32F407): in development
 
-A two-wheeled self-balancing robot built on an STM32F407 as a hands-on study of
-**real-time embedded control**. Balancing is the baseline, not the goal. The goal is a
-**quantitative comparison of a PID controller against an LQR controller** on the same physical
-plant, with measured step-response and disturbance-rejection plots.
+Development of a two-wheeled self-balancing robot on an STM32F407 Discovery board.
 
-> Built as a portfolio project for a Master's application (embedded / control systems / robotics).
-> Work in progress — the status table below is kept current.
+**Current state:** IMU acquisition, tilt estimation (complementary and Kalman filters) and
+open-loop motor and encoder bring-up are done and documented with logged data. The Phase 5
+firmware runs the tilt filter on a 200 Hz timer tick. The robot is not yet assembled and no
+controller is running.
+
+**Plan:** PID balance, then an LQR controller designed from a measured model of the robot,
+compared with cascade PID under one written test protocol.
 
 ---
 
@@ -17,8 +19,8 @@ plant, with measured step-response and disturbance-rejection plots.
 | 1 | Toolchain + blink (prove the flash/debug path) | ✅ done |
 | 2 | Read the IMU (I2C → MPU6500, raw data over UART) | ✅ done |
 | 3 | Tilt estimation (complementary filter → Kalman), logged + plotted | ✅ done |
-| 4 | Drive motors (PWM + TB6612, read encoders), open-loop verify | ✅ done |
-| 5 | Second motor + close the loop: PID on a fixed-rate timer ISR; first balance | 🟡 in progress — peripherals configured, both motors and encoders running (drive and encoder signs not yet verified on the chassis); IMU driver and tilt filter written and called from the 200 Hz TIM6 tick; PID not yet written; robot not yet assembled |
+| 4 | Drive a motor (PWM + TB6612, read its encoder), open-loop verify; motor A only | ✅ done; interval-logged re-run pending |
+| 5 | Second motor + close the loop: PID on a fixed-rate timer tick; first balance | 🟡 in progress: both motors and encoders wired (signs not yet verified); IMU driver and tilt filter on the 200 Hz tick, with missed-tick and timing counters (rate not yet measured); PID not written; robot not assembled |
 | 6 | Add outer velocity loop + LQR; **PID vs LQR comparison** | ⬜ not started |
 | 7 | Document: report, plots, wiring diagram, demo GIF | ⬜ not started |
 
@@ -32,8 +34,8 @@ Each folder is a complete STM32CubeIDE project (STM32CubeMX 6.18.1, STM32Cube FW
 |--------|----------|------------------------------|
 | [`firmware/phase01_blink`](firmware/phase01_blink) | 1 | Holding the user button (PA0) lights the on-board LEDs. The first step of this phase, a 1 Hz blink, was replaced by this code. |
 | [`firmware/phase02_imu`](firmware/phase02_imu) | 2 + 3 | Reads the IMU over I2C, runs a complementary filter and a 2-state Kalman filter, and streams `time, accel, gyro-only, complementary, kalman` as CSV over UART. Phase 3 was built inside the Phase 2 project. |
-| [`firmware/phase04_motors`](firmware/phase04_motors) | 4 | 25 kHz PWM into a TB6612FNG, TIM3 hardware quadrature decoding, forward/reverse test printing the encoder count every 200 ms. |
-| [`firmware/phase05_balance`](firmware/phase05_balance) | 5 (in progress) | 168 MHz clock, 21 kHz PWM on both motors, TIM2/TIM3 encoders, TIM6 200 Hz control tick. `motors.c` holds the single motor-drive helper and the mirror sign convention. `mpu6500.c` checks `WHO_AM_I`, wakes the sensor and reads all six axes in one 14-byte burst; `tilt.c` calibrates the gyro bias, seeds the angle from the accelerometer and runs a complementary filter. `main.c` starts TIM6 last, updates the angle on every tick (the ISR only sets a flag), streams `time, angle` at about 10 Hz and prints a temporary ticks-per-second check. Motors stay stopped. |
+| [`firmware/phase04_motors`](firmware/phase04_motors) | 4 | 25 kHz PWM into a TB6612FNG, TIM3 hardware quadrature decoding. Forward/reverse test at 30 % duty printing `time_ms,dir,cmd,count,delta` about every 200 ms (the September version printed only the running count). |
+| [`firmware/phase05_balance`](firmware/phase05_balance) | 5 (in progress) | 168 MHz clock, 21 kHz PWM on both motors, TIM2/TIM3 encoders, TIM6 200 Hz tick. `mpu6500.c` sets the sensor's ranges and low-pass filters and reads all six axes in one burst; `tilt.c` calibrates the gyro bias (failing if too few reads succeed) and runs a complementary filter with a 0.75 s time constant. The tick interrupt only counts; `main.c` processes pending ticks, counts missed ones, streams `time, angle, rate` at about 10 Hz and timing statistics once per second. Motors stay stopped; IMU failures and fault handlers put the motor driver in standby. |
 
 ## Hardware
 
@@ -50,35 +52,35 @@ Full bill of materials and open items: [`docs/hardware-inventory.md`](docs/hardw
 ## Repo layout
 
 ```
-docs/        phase build guides, hardware inventory
-firmware/    STM32CubeIDE projects (see the table above)
-control/     logged CSV runs, plots, plotting script
-media/       bench photos
+docs/             phase records (what was built, measured and found), hardware inventory
+docs/guides/      step-by-step build guides followed in each phase
+firmware/         STM32CubeIDE projects (see the table above)
+control/          logged runs, plots, analysis scripts (index: control/README.md)
+media/            bench photos
 LEARNING_LOG.md   dated log of what was done, learned and debugged, with corrections marked
 ```
 
 ## Results so far
 
-**Phase 3 — tilt estimation.** The board runs a complementary filter (`alpha = 0.98`) and a
-2-state Kalman filter (angle + gyro bias) side by side on the same live IMU samples and streams
-both, with the accel-only and gyro-only angles for comparison. In the logged runs (tilt sweeps
-of about ±60°) the gyro-only angle visibly drifts, the accel-only angle is noisy, and the fused
-estimates follow the tilt. The logged loop runs at ~62–67 Hz (15–16 ms period: a 10 ms delay
-plus the blocking I2C reads and UART print). Two runs were made with `R_measure = 0.03` and `0.1`; they used different
-disturbances, so they do not yet isolate the effect of R — see the Phase 3 entry in the
-[learning log](LEARNING_LOG.md). Runs and plots: [`control/`](control).
+**Phase 3: tilt estimation** ([record](docs/phase-03-record.md)). A complementary filter and a
+2-state Kalman filter run side by side on the same IMU samples, logged with the accel-only and
+gyro-only angles at 63-67 Hz (15-16 ms loop) during hand tilts of about +/-60 deg. The gyro-only angle
+drifts, the accel angle is noisy, and the fused estimates follow the accel angle without the noise.
+There is no independent angle reference, so this shows filter behaviour, not accuracy. An offline
+replay of the logged inputs showed that both Kalman runs were recorded with `R_measure = 0.03`,
+including the one saved as "R = 0.1"; run on identical inputs, R = 0.03 and R = 0.1 differ by a
+median of 0.2-0.3 deg and mainly during large excursions.
 
-**Phase 4 — open-loop drive.** Motor A under 25 kHz PWM + TB6612 with TIM3 hardware encoder
-feedback: **+245 counts / 200 ms forward, −244 counts / 200 ms reverse** (≈1225 counts/s at 30 %
-duty), steady across samples and symmetric in both directions, with measured direction matching
-the commanded one.
+**Phase 4: open-loop drive** ([record](docs/phase-04-record.md)). Motor A at 30 % duty, 25 kHz PWM:
+the encoder count changed by about +245 per 200 ms forward and about -244 in reverse (about 1225
+counts/s), with the direction of the count matching the command. These figures were read off the
+terminal; the raw output was not saved. A re-run with per-interval logging is pending.
 
-**Phase 5 — in progress.** Both motors driven through one helper with a software sign
-convention (`MOTOR_A_SIGN = +1`, `MOTOR_B_SIGN = −1`); with that convention both encoders count
-positive when the robot is commanded forward. That does not yet verify the signs: each motor has a
-drive polarity and an encoder polarity, and a count shows only their product, so two wrong signs read
-the same as two right ones. The drive signs will be set by watching the wheels on the assembled
-chassis, and the encoder signs after that.
+**Phase 5: in progress** ([record](docs/phase-05-record.md)). The 200 Hz tick, the tilt filter and
+the timing counters are in the firmware; the tick rate is to be measured against the PC clock. The
+motor sign convention (`MOTOR_A_SIGN = +1`, `MOTOR_B_SIGN = -1`) is not yet verified: an encoder
+count shows the product of a motor's drive and encoder polarities, so the drive signs will be set by
+watching the wheels on the assembled chassis.
 
 _(Step-response and disturbance-rejection plots, settling time, overshoot, control-loop rate and
 the demo GIF land here as Phases 5–7 complete.)_

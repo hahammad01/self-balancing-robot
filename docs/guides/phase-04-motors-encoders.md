@@ -1,5 +1,7 @@
 # Phase 4 — Drive both motors + read both encoders (JGA25-370, open-loop)
 
+> As built, Phase 4 used **motor A only**; see the scope note below and `docs/phase-04-record.md`.
+
 **Goal:** drive **both** JGA25-370 motors under software control — **speed** (PWM) and **direction** via
 the TB6612 — and read **both** quadrature encoders so you know how far each wheel actually turned.
 "Open-loop" = command and observe; no feedback correcting it yet (that's Phase 5).

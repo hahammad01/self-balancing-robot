@@ -10,8 +10,6 @@ USB cable.
 - **Under the hood** — what's *physically* happening in the chip or the tools. Read this part.
   It's where the understanding lives.
 
-If any line here is unclear, that's a bug in the guide — flag it and it gets fixed.
-
 ---
 
 # Part 0 — The mental model (read this once; everything later depends on it)
@@ -70,8 +68,8 @@ We haven't told it to go faster, so it uses this safe default.
 
 **Why that's totally fine for now:** blinking an LED doesn't need speed. Later (Phase 5, the control
 loop) we'll crank it up to 168 MHz because balancing math must run fast. For now, 16 MHz keeps the
-setup simple and nothing about blink cares. (This corrects something I said earlier — your chip is
-*not* at 168 MHz in this project, and it doesn't need to be.)
+setup simple and nothing about blink cares. The chip is *not* at 168 MHz in this project, and it
+doesn't need to be.
 
 The clock also drives timing. That's how the chip knows what "500 milliseconds" means — it counts
 clock ticks. See `HAL_Delay` in Part 6.

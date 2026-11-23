@@ -87,6 +87,29 @@ void motorB(int speed) {
     if (speed > 999) speed = 999;
     __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, speed);
 }
+
+static void uart_print(const char *s)
+{
+    HAL_UART_Transmit(&huart2, (uint8_t *)s, strlen(s), 100);
+}
+
+/* Drives motor A at cmd for 10 samples, printing count and delta every ~200 ms.
+   The real interval is in the time_ms column (the UART print adds about 2 ms). */
+static void run_and_log(const char *dir, int16_t cmd)
+{
+    char line[64];
+    int16_t prev = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
+
+    motorA(cmd); motorB(cmd);
+    for (int i = 0; i < 10; i++) {
+        HAL_Delay(200);
+        int16_t c = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
+        int16_t d = (int16_t)(c - prev);
+        prev = c;
+        sprintf(line, "%lu,%s,%d,%d,%d\r\n", (unsigned long)HAL_GetTick(), dir, cmd, c, d);
+        uart_print(line);
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -126,7 +149,7 @@ int main(void)
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);                    // PWM A
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);                    // PWM B
   HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);              // encoder A counting
-  char line[48];
+  uart_print("time_ms,dir,cmd,count,delta\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -136,27 +159,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    // forward ~2 s, printing every 200 ms
-    motorA(300); motorB(300);
-    for (int i = 0; i < 10; i++) {
-        int16_t c = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
-        sprintf(line, "FWD ENC: %d\r\n", c);
-        HAL_UART_Transmit(&huart2, (uint8_t*)line, strlen(line), 100);
-        HAL_Delay(200);
-    }
-
-    motorA(0); motorB(0); HAL_Delay(1000);   // stop
-
-    // reverse ~2 s, printing every 200 ms
-    motorA(-300); motorB(-300);
-    for (int i = 0; i < 10; i++) {
-        int16_t c = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
-        sprintf(line, "REV ENC: %d\r\n", c);
-        HAL_UART_Transmit(&huart2, (uint8_t*)line, strlen(line), 100);
-        HAL_Delay(200);
-    }
-
-    motorA(0); motorB(0); HAL_Delay(1000);   // stop
+    /* Encoder log, CSV over UART: time_ms,dir,cmd,count,delta
+       count = TIM3 counter (motor A), delta = change since the previous line in the
+       same run (int16_t difference, so counter wrap-around is handled).
+       Each run: 10 samples about 200 ms apart, then 1 s stopped. */
+    run_and_log("FWD",  300);
+    motorA(0); motorB(0); HAL_Delay(1000);
+    run_and_log("REV", -300);
+    motorA(0); motorB(0); HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }

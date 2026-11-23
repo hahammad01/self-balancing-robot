@@ -14,15 +14,24 @@ looked like only ~4 s when it actually ran ~25 s).
 
 Usage:
     pip install numpy matplotlib
-    python plot_tilt.py                 # reads tilt_log.csv next to this file
-    python plot_tilt.py mylog.csv
+    python control/plot_tilt.py "control/Complementary Filter tilt_log.csv"
+    python control/plot_tilt.py          # lists the logs in control/ and exits
 """
 
 import sys
+from pathlib import Path
+
 import numpy as np
 import matplotlib.pyplot as plt
 
-filename = sys.argv[1] if len(sys.argv) > 1 else "tilt_log.csv"
+if len(sys.argv) < 2:
+    here = Path(__file__).resolve().parent
+    print("Usage: python plot_tilt.py <log.csv>\nLogs in control/:")
+    for p in sorted(here.glob("*tilt_log.csv")):
+        print(f'  "{p.name}"')
+    sys.exit(1)
+
+filename = sys.argv[1]
 
 data = np.genfromtxt(filename, delimiter=",", invalid_raise=False)
 data = data[~np.isnan(data).any(axis=1)]        # drop any non-numeric / partial rows
@@ -69,6 +78,9 @@ plt.title("Phase 3 — Tilt estimation: sensor fusion")
 plt.grid(True, alpha=0.3)
 plt.legend(loc="best")
 plt.tight_layout()
-plt.savefig("tilt_plot.png", dpi=150)
-print("Saved tilt_plot.png")
+stem = Path(filename).stem
+stem = stem[:-3] + "plot" if stem.endswith("log") else stem + "_plot"
+out = Path(filename).resolve().with_name(stem + ".png")     # next to the log
+plt.savefig(out, dpi=150)
+print(f"Saved {out.name}")
 plt.show()

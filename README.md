@@ -19,7 +19,7 @@ compared with cascade PID under one written test protocol.
 | 1 | Toolchain + blink (prove the flash/debug path) | ✅ done |
 | 2 | Read the IMU (I2C → MPU6500, raw data over UART) | ✅ done |
 | 3 | Tilt estimation (complementary filter → Kalman), logged + plotted | ✅ done |
-| 4 | Drive a motor (PWM + TB6612, read its encoder), open-loop verify; motor A only | ✅ done; interval-logged re-run pending |
+| 4 | Drive a motor (PWM + TB6612, read its encoder), open-loop verify; motor A only | ✅ done |
 | 5 | Second motor + close the loop: PID on a fixed-rate timer tick; first balance | 🟡 in progress: both motors and encoders wired (signs not yet verified); IMU driver and tilt filter on the 200 Hz tick, measured at 199.89 Hz against the PC clock with 0 missed ticks; PID not written; robot not assembled |
 | 6 | Add outer velocity loop + LQR; **PID vs LQR comparison** | ⬜ not started |
 | 7 | Document: report, plots, wiring diagram, demo GIF | ⬜ not started |
@@ -72,9 +72,10 @@ including the one saved as "R = 0.1"; run on identical inputs, R = 0.03 and R = 
 median of 0.2-0.3 deg and mainly during large excursions.
 
 **Phase 4: open-loop drive** ([record](docs/phase-04-record.md)). Motor A at 30 % duty, 25 kHz PWM:
-the encoder count changed by about +245 per 200 ms forward and about -244 in reverse (about 1225
-counts/s), with the direction of the count matching the command. These figures were read off the
-terminal; the raw output was not saved. A re-run with per-interval logging is pending.
+a logged re-run (11.6 V, no load, 7 runs each way) gave +243.5 counts per interval forward
+(SD 0.6) and -241.7 in reverse (SD 0.5), about 1200 and 1191 counts/s, with the count direction
+following the command every time. The September figures (+245 / -244, read off the terminal) agree
+within 1 %.
 
 **Phase 5: in progress** ([record](docs/phase-05-record.md)). The 200 Hz loop measured against the PC clock over 64 s:
 199.89 Hz, 0 missed ticks, longest pass 2.4 ms of the 5 ms tick with telemetry on. The

@@ -335,8 +335,13 @@ over 64 s, 0 missed ticks, IMU read + filter 400 µs, longest pass with UART 243
 0 IMU read errors. The first attempt logged the old firmware: the new build had been compiled but
 not flashed. Check the boot line (`# WHO_AM_I=…`) before trusting a log.
 
+**Result, Phase 4 re-run** (`control/phase04-encoder-log.csv`, motor A, no load, 30 % duty,
+11.6 V, bulk capacitor fitted): +243.5 counts per interval forward (SD 0.6, 63 intervals) and −241.7
+in reverse (SD 0.5, 63 intervals). The interval is about 203 ms, so the rate is 1200 and 1191
+counts/s; the old 1225 counts/s assumed exactly 200 ms. The first summary merged two lines from
+before the reset into the first run; `encoder_summary.py` now starts a new run at a reset.
+
 **Open:**
-- Phase 4 re-run with logged intervals.
 - Phase 5: motor and encoder signs on the chassis.
 
 <!--

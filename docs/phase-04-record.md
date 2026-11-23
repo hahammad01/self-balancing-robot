@@ -30,13 +30,28 @@ terminal by differencing successive counts. The terminal output was not saved, s
 values and their spread are not available. The commanded direction matched the sign of the count
 change in both directions.
 
-**Re-run with logged intervals.** Pending. The firmware now prints
-`time_ms,dir,cmd,count,delta` per sample, with `delta` computed on the board (16-bit wrap handled),
-for logging with [`control/log_serial.py`](../control/log_serial.py) and summarising with
-[`control/encoder_summary.py`](../control/encoder_summary.py) (mean, standard deviation, minimum and
-maximum per direction, spin-up interval reported separately). The motor A pins are the same in the
-Phase 5 wiring, so the test runs on the current bench setup; motor B is commanded too and must be
-free to turn.
+**Re-run with logged intervals (23 Nov 2026).** The firmware prints `time_ms,dir,cmd,count,delta`
+per sample, with `delta` computed on the board (16-bit wrap handled). Log:
+[`control/phase04-encoder-log.csv`](../control/phase04-encoder-log.csv), recorded with
+[`control/log_serial.py`](../control/log_serial.py), summarised with
+[`control/encoder_summary.py`](../control/encoder_summary.py). Conditions: motor A only, no wheel or
+load, 30 % duty, pack 11.6 V before and after, bulk electrolytic capacitor fitted across VM-GND. The first two
+lines of the file are from before the reset and are not used.
+
+| | Forward | Reverse |
+|---|---:|---:|
+| Complete runs | 7 | 7 |
+| Steady intervals (first of each run excluded) | 63 | 63 |
+| Counts per interval, mean (SD) | +243.5 (0.6) | -241.7 (0.5) |
+| Counts per interval, min / max | 242 / 245 | -243 / -241 |
+| Interval length | about 203 ms (200 ms delay + UART print) | same |
+| Counts per second, mean (SD) | 1200 (3) | -1191 (2) |
+| First interval (spin-up) | 215-216 | -214 to -216 |
+
+The September figures (about +245 and -244 per 200 ms) agree with these within 1 %. Using the measured
+interval, the rate is about 1200 counts/s forward and 1191 in reverse, not the 1225 counts/s quoted
+before, which assumed exactly 200 ms. Reverse is 0.8 % slower than forward. The count direction
+followed the command in every interval.
 
 ## Problems found
 - `sprintf`/`strlen` implicitly declared: `<stdio.h>`/`<string.h>` missing.

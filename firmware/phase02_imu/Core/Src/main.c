@@ -147,7 +147,7 @@ int main(void)
   kalAngle = roll;   // NOTE: roll is still 0 here (it is seeded from the accel further down),
                      // so the Kalman angle starts at 0 deg and converges from the accelerometer.
 
-  // Ask the sensor "who are you?" — 0x68 = MPU6050, 0x70 = MPU6500
+  // Read WHO_AM_I: 0x68 = MPU6050, 0x70 = MPU6500
   HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, REG_WHO_AM_I, I2C_MEMADD_SIZE_8BIT, &who, 1, 100);
 
   if (who == 0x68 || who == 0x70) {
@@ -208,7 +208,7 @@ int main(void)
     // 6) Complementary filter
     float alpha = 0.98f;
     roll = alpha * (roll + gyroRate * dt) + (1.0f - alpha) * rollAcc;
-    // Kalman fused angle — uses the SAME bias-corrected gyroRate you fixed
+    // Kalman fused angle, from the same bias-corrected gyroRate as the complementary filter
     float rollKalman = kalman(rollAcc, gyroRate, dt);
     // 7) CSV: time_ms, accel, gyro-only, complementary, kalman
     char line[80];

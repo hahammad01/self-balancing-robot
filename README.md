@@ -53,7 +53,7 @@ Full bill of materials and open items: [`docs/hardware-inventory.md`](docs/hardw
 
 ```
 docs/             phase records (what was built, measured and found), hardware inventory
-docs/guides/      step-by-step build guides followed in each phase
+docs/      step-by-step build in each phase
 firmware/         STM32CubeIDE projects (see the table above)
 control/          logged runs, plots, analysis scripts (index: control/README.md)
 media/            bench photos
